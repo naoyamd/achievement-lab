@@ -1,0 +1,53 @@
+name: Galaxy Brain helper
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/galaxy-brain.yml]
+  discussion_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  discussions: write
+
+jobs:
+  seed:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create two answerable discussions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          owner="${GH_REPO%/*}"
+          repo="${GH_REPO#*/}"
+          query='query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo){id discussionCategories(first:20){nodes{id isAnswerable}} discussions(first:100){nodes{title}}}}'
+          data=$(gh api graphql -f query="$query" -f owner="$owner" -f repo="$repo")
+          repository_id=$(jq -r '.data.repository.id' <<<"$data")
+          category_id=$(jq -r '.data.repository.discussionCategories.nodes[] | select(.isAnswerable) | .id' <<<"$data" | head -n 1)
+          existing=$(jq -r '.data.repository.discussions.nodes[].title' <<<"$data")
+          test -n "$category_id" && test "$category_id" != "null"
+
+          create_discussion() {
+            local title="$1" body="$2"
+            grep -Fxq "$title" <<<"$existing" && return 0
+            gh api graphql \
+              -f query='mutation($repositoryId:ID!,$categoryId:ID!,$title:String!,$body:String!){createDiscussion(input:{repositoryId:$repositoryId,categoryId:$categoryId,title:$title,body:$body}){discussion{url}}}' \
+              -f repositoryId="$repository_id" -f categoryId="$category_id" -f title="$title" -f body="$body"
+          }
+
+          create_discussion 'このリポジトリは何を検証しますか？' '自分の所有する公開リポジトリだけでGitHub Achievementsの挙動を確認するための質問です。'
+          create_discussion '検証時に守るルールは？' '第三者のリポジトリへ書き込まず、費用を発生させず、結果を公開記録として残す方針について教えてください。'
+
+  accept:
+    if: github.event_name == 'discussion_comment' && github.event.comment.user.login == github.repository_owner && github.event.discussion.user.login == 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Accept the owner's answer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ github.event.comment.node_id }}
+        run: gh api graphql -f query='mutation($id:ID!){markDiscussionCommentAsAnswer(input:{id:$id}){discussion{url}}}' -f id="$COMMENT_ID"
