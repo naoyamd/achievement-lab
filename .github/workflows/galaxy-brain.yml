@@ -16,7 +16,7 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Create two answerable discussions
+      - name: Create eight answerable discussions
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -41,6 +41,12 @@ jobs:
 
           create_discussion 'このリポジトリは何を検証しますか？' '自分の所有する公開リポジトリだけでGitHub Achievementsの挙動を確認するための質問です。'
           create_discussion '検証時に守るルールは？' '第三者のリポジトリへ書き込まず、費用を発生させず、結果を公開記録として残す方針について教えてください。'
+          create_discussion '公開リポジトリで検証する理由は？' '検証結果を第三者が確認できる状態にする利点と、公開時に注意すべき点を教えてください。'
+          create_discussion '第三者への影響を避ける方法は？' 'Achievement検証を所有者自身の範囲だけで完結させるための具体的な境界を教えてください。'
+          create_discussion 'Accepted Answerで確認できることは？' 'Q&Aの回答受理を使うことで、GitHub Discussionsのどの一連の動作を確認できますか？'
+          create_discussion 'この検証で除外する操作は？' '安全かつ迷惑をかけない検証にするため、実施しない操作を明確にしてください。'
+          create_discussion '検証結果はどう記録しますか？' 'あとから再確認できるよう、実施内容と結果をどこへどのように残しますか？'
+          create_discussion '検証を終了する基準は？' '目的達成後に不要な操作を増やさないため、終了条件を教えてください。'
 
   accept:
     if: github.event_name == 'discussion_comment' && github.event.comment.user.login == github.repository_owner && github.event.discussion.user.login == 'github-actions[bot]'
